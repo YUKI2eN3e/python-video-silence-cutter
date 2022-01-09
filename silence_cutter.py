@@ -86,7 +86,9 @@ def ffmpeg_run (file, videoFilter, audioFilter, outfile):
   aFile.close()
 
   command = ["ffmpeg","-i",file,
+              "-c:v","libx265", #Change video to h.265 with libx265
               "-filter_script:v",vFile.name,
+              "-c:a","libfdk_aac", #Change audio to aac with libfdk_aac
               "-filter_script:a",aFile.name,
               outfile]
   subprocess.run (command)
