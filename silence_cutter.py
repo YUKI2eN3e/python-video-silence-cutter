@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 import sys
 import os
+import re
 
 def findSilences(filename, dB = -35):
   """
@@ -19,6 +20,7 @@ def findSilences(filename, dB = -35):
   time_list = []
   for line in lines:
     if ("silencedetect" in line):
+        line = re.sub('\\\\r$', '', line)
         words = line.split(" ")
         for i in range (len(words)):
             if ("silence_start" in words[i]):
@@ -68,31 +70,28 @@ def getFileContent_audioFilter(videoSectionTimings):
   ret += "', asetpts=N/SR/TB"
   return ret
 
-def writeFile (filename, content):
-  with open (filename, "w") as file:
-    file.write (str(content))
+def writeFile (file, content):
+  file.write (str(content))
 
 
 def ffmpeg_run (file, videoFilter, audioFilter, outfile):
   # prepare filter files
-  vFile = tempfile.NamedTemporaryFile (mode="w", encoding="UTF-8", prefix="silence_video")
-  aFile = tempfile.NamedTemporaryFile (mode="w", encoding="UTF-8", prefix="silence_audio")
+  vFile = tempfile.NamedTemporaryFile (mode="w", encoding="UTF-8", prefix="silence_video", delete=False)
+  aFile = tempfile.NamedTemporaryFile (mode="w", encoding="UTF-8", prefix="silence_audio", delete=False)
 
-  videoFilter_file = vFile.name #"/tmp/videoFilter" # TODO: replace with tempfile
-  audioFilter_file = aFile.name #"/tmp/audioFilter" # TODO: replace with tempfile
-  writeFile (videoFilter_file, videoFilter)
-  writeFile (audioFilter_file, audioFilter)
-
-  command = ["ffmpeg","-i",file,
-              "-filter_script:v",videoFilter_file,
-              "-filter_script:a",audioFilter_file,
-              outfile]
-  subprocess.run (command)
+  writeFile (vFile, videoFilter)
+  writeFile (aFile, audioFilter)
 
   vFile.close()
   aFile.close()
 
-
+  command = ["ffmpeg","-i",file,
+              "-filter_script:v",vFile.name,
+              "-filter_script:a",aFile.name,
+              outfile]
+  subprocess.run (command)
+  os.remove(vFile.name)
+  os.remove(aFile.name)
 
 def cut_silences(infile, outfile, dB = -35):
   print ("detecting silences")
